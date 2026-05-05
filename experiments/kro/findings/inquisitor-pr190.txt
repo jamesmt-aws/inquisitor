@@ -1,0 +1,127 @@
+github.com/kubernetes-sigs/kro/experimental/controller
+  1 packages · 19 types · 439 functions · 18982 lines
+
+  Glossary:
+    cog     cognitive complexity (Campbell 2018) — measures reader difficulty by penalizing
+            nesting depth. An if inside a for costs more than two flat structures. Functions
+            exceeding cog:15 correlate with elevated defect rates. Decompose or flatten.
+
+    cyc     cyclomatic complexity (McCabe 1976) — counts linearly independent execution paths.
+            Higher values mean more test cases needed for coverage and more states a reader
+            must track. Widely used as a maintenance risk indicator.
+
+    fan_in  direct static call sites referencing this function. High fan_in means the
+            function is heavily reused — changes to its contract are expensive. Low fan_in
+            (especially fan_in:1) suggests the function may not justify its abstraction cost.
+
+    fan_out distinct functions called from this function's body. High fan_out means the
+            function coordinates many others — it's a point of high cognitive load and
+            change sensitivity.
+
+    LCOM4   lack of cohesion (Hitz & Montazeri 1995) — connected components in the method-
+            field graph. LCOM4:1 means all methods work together through shared state.
+            LCOM4 > 1 means the type contains independent method groups that don't interact —
+            a sign it should be split. Higher values correlate with defect-proneness.
+
+    CBO     coupling between objects (Chidamber & Kemerer 1994) — distinct types from other
+            packages used through fields, parameters, and bodies. Basili et al. (1996) found
+            CBO correlates with fault-proneness; practitioners use CBO > 5 as a threshold.
+            Reduce by narrowing interfaces or splitting responsibilities.
+
+    Ca      afferent coupling (Martin 2002) — packages depending on this one. High Ca means
+            changes here ripple outward. Stable packages (high Ca, low Ce) should change
+            rarely and define abstractions.
+
+    Ce      efferent coupling (Martin 2002) — packages this one depends on. High Ce means
+            this package is sensitive to changes elsewhere. Volatile packages (low Ca, high Ce)
+            are expected to change often.
+
+    I       instability (Martin 2002) — Ce/(Ca+Ce). 0 = maximally stable (everything depends
+            on it, it depends on nothing). 1 = maximally volatile (nothing depends on it, it
+            depends on everything). Dependencies should point toward stability.
+
+    A       abstractness (Martin 2002) — interfaces / total types. Abstract packages define
+            contracts without implementation. Martin's stable-abstractions principle: stable
+            packages should be abstract so they can be extended without modification.
+
+    D       distance (Martin 2002) — |A+I-1|. Measures deviation from the ideal: stable
+            packages should be abstract, volatile packages should be concrete. D = 0 is
+            ideal. High D suggests a package is either too concrete for its stability or
+            too abstract for its volatility.
+
+  Medians:
+    package    Ce:0  196 exports  18982 lines
+    type       LCOM4:1  CBO:2  4 methods
+    function   cog:1  cyc:2  fan_in:1  fan_out:3  17 lines
+
+  Packages:
+    controller  18982 lines (100%)  Ca:0  Ce:0  I:0.00
+
+=== Cohesion — LCOM4 (Hitz & Montazeri 1995) ===
+Connected method groups sharing a struct. LCOM4:1 = cohesive. LCOM4 > 1 = multiple
+responsibilities sharing one type.
+Threshold: LCOM4 > 1. Codebase median: 1.
+Implies: split into separate types, one per group.
+
+  instanceState (controller)     LCOM4:2  4 methods  CBO:3
+    Group 1: isDriftExpired, nextDriftExpiry, resetDriftTimer
+    Group 2: updateAppliedKeys
+  WatchManager (controller)      LCOM4:2  10 methods  CBO:12
+    Group 1: KindFor, deriveAppliedSet, ensureWatch, eventHandlers, forceStop, getResourceVersion, releaseWatch, shutdown, stopLocked
+    Group 2: defaultCreateInformer
+  WatchCoordinator (controller)  LCOM4:2  10 methods  CBO:6
+    Group 1: addCollectionLocked, addScalarLocked, doneGraph, gvrsToReleaseLocked, removeCollectionLocked, removeFromIndexesLocked, removeGraph, removeScalarLocked, routeEvent
+    Group 2: forGraph
+  evaluator (controller)         LCOM4:2  15 methods  CBO:2
+    Group 1: checkPropagateWhen, checkReadiness, evalBoolCondition, evalReadiness, evalString, firstUnsatisfiedCondition, includeWhen, markReady, markUpdated, snapshotFor, template, toMap, toMapNode, withScope
+    Group 2: collectionCacheUpdate
+
+=== Cognitive Complexity (Campbell 2018) ===
+Reader difficulty. Penalizes nesting — an if inside a for inside a switch costs more
+than three flat ifs. Measures the cost of holding nested context in working memory.
+Threshold: cog > 15. Codebase median: 1.
+Implies: decompose or simplify.
+
+  (*GraphReconciler).Reconcile()                cog:363   controller  832 lines
+  (*GraphReconciler).reconcileDelete()          cog:182   controller  418 lines
+  (*walkState).tryDispatch()                    cog:153   controller  364 lines
+  (*GraphReconciler).reconcileForEach()         cog:132   controller  388 lines
+  parseNodeList()                               cog:117   controller  177 lines
+  BuildDAG()                                    cog:101   controller  214 lines
+  (*GraphReconciler).pruneRemovedResources()    cog:99    controller  241 lines
+  compileGraphSpec()                            cog:81    controller  333 lines
+  (*GraphReconciler).applySSA()                 cog:75    controller  197 lines
+  resolveNodeTypes()                            cog:59    controller  99 lines
+  extractReferencedPathsFromNode()              cog:54    controller  120 lines
+  detectCyclesEarly()                           cog:45    controller  93 lines
+  (*GraphReconciler).reconcileWatch()           cog:45    controller  144 lines
+  (*WatchCoordinator).routeEvent()              cog:45    controller  87 lines
+  celSimpleSchemaFunction()                     cog:38    controller  88 lines
+  setNodeKeyword()                              cog:37    controller  81 lines
+  findExpr()                                    cog:36    controller  52 lines
+  extractFieldPathsFromAST()                    cog:35    controller  93 lines
+  compileDeferredExpressions()                  cog:32    controller  57 lines
+  (*GraphReconciler).runFinalization()          cog:30    controller  114 lines
+  refineDefTypes()                              cog:29    controller  81 lines
+  rewriteMemberCallToMapLookup()                cog:29    controller  77 lines
+  (*compiledGraph).eval()                       cog:28    controller  76 lines
+  (*GraphReconciler).updateRevisionStatus()     cog:28    controller  44 lines
+  hydrateWatchCachesFromRevisions()             cog:28    controller  88 lines
+  (*GraphReconciler).findManagedResourceKeys()  cog:28    controller  59 lines
+  (*WatchManager).deriveAppliedSet()            cog:27    controller  68 lines
+  (*WatchCoordinator).doneGraph()               cog:27    controller  84 lines
+  pruneOrder()                                  cog:27    controller  61 lines
+  snapshotNode()                                cog:26    controller  62 lines
+  (*evaluator).snapshotFor()                    cog:26    controller  80 lines
+  BenchmarkCompileRevisionSharing()             cog:25    controller  30 lines
+  (*GraphSpec).AllExpressions()                 cog:24    controller  52 lines
+  forEachStampReadyWhen()                       cog:23    controller  44 lines
+  BenchmarkForEachItemDiff()                    cog:22    controller  36 lines
+  checkFieldCompat()                            cog:21    controller  33 lines
+  (*GraphReconciler).runForEachFinalization()   cog:20    controller  88 lines
+  benchForEachIncremental()                     cog:20    controller  33 lines
+  extractScopeVars()                            cog:19    controller  28 lines
+  celUpdatedFunction()                          cog:18    controller  41 lines
+  celReadyFunction()                            cog:18    controller  41 lines
+  (*reconcileState).deriveReadyCondition()      cog:16    controller  66 lines
+  loosenOpaqueFields()                          cog:16    controller  56 lines
