@@ -1,0 +1,81 @@
+github.com/ellistarn/kro/experimental/controller
+  5 packages · 21 types · 457 functions · 19766 lines
+
+  Glossary:
+    cog     cognitive complexity (Campbell 2018) — measures reader difficulty by penalizing
+            nesting depth. An if inside a for costs more than two flat structures. Functions
+            exceeding cog:15 correlate with elevated defect rates. Decompose or flatten.
+
+    cyc     cyclomatic complexity (McCabe 1976) — counts linearly independent execution paths.
+            Higher values mean more test cases needed for coverage and more states a reader
+            must track. Widely used as a maintenance risk indicator.
+
+    fan_in  direct static call sites referencing this function. High fan_in means the
+            function is heavily reused — changes to its contract are expensive. Low fan_in
+            (especially fan_in:1) suggests the function may not justify its abstraction cost.
+
+    fan_out distinct functions called from this function's body. High fan_out means the
+            function coordinates many others — it's a point of high cognitive load and
+            change sensitivity.
+
+    LCOM4   lack of cohesion (Hitz & Montazeri 1995) — connected components in the method-
+            field graph. LCOM4:1 means all methods work together through shared state.
+            LCOM4 > 1 means the type contains independent method groups that don't interact —
+            a sign it should be split. Higher values correlate with defect-proneness.
+
+    CBO     coupling between objects (Chidamber & Kemerer 1994) — distinct types from other
+            packages used through fields, parameters, and bodies. Basili et al. (1996) found
+            CBO correlates with fault-proneness; practitioners use CBO > 5 as a threshold.
+            Reduce by narrowing interfaces or splitting responsibilities.
+
+    Ca      afferent coupling (Martin 2002) — packages depending on this one. High Ca means
+            changes here ripple outward. Stable packages (high Ca, low Ce) should change
+            rarely and define abstractions.
+
+    Ce      efferent coupling (Martin 2002) — packages this one depends on. High Ce means
+            this package is sensitive to changes elsewhere. Volatile packages (low Ca, high Ce)
+            are expected to change often.
+
+    I       instability (Martin 2002) — Ce/(Ca+Ce). 0 = maximally stable (everything depends
+            on it, it depends on nothing). 1 = maximally volatile (nothing depends on it, it
+            depends on everything). Dependencies should point toward stability.
+
+    A       abstractness (Martin 2002) — interfaces / total types. Abstract packages define
+            contracts without implementation. Martin's stable-abstractions principle: stable
+            packages should be abstract so they can be extended without modification.
+
+    D       distance (Martin 2002) — |A+I-1|. Measures deviation from the ideal: stable
+            packages should be abstract, volatile packages should be concrete. D = 0 is
+            ideal. High D suggests a package is either too concrete for its stability or
+            too abstract for its volatility.
+
+  Medians:
+    package    Ce:1  26 exports  2881 lines
+    type       LCOM4:1  CBO:3  2 methods
+    function   cog:1  cyc:2  fan_in:1  fan_out:3  16 lines
+
+  Packages:
+    controller  12066 lines (61%)  Ca:0  Ce:4  I:1.00
+    compiler    3078 lines (15%)  Ca:1  Ce:2  I:0.67
+    graph       2881 lines (14%)  Ca:4  Ce:0  I:0.00
+    watches     1009 lines (5%)  Ca:1  Ce:1  I:0.50
+    dag         732 lines (3%)  Ca:2  Ce:1  I:0.33
+
+=== Cohesion — LCOM4 (Hitz & Montazeri 1995) ===
+Connected method groups sharing a struct. LCOM4:1 = cohesive. LCOM4 > 1 = multiple
+responsibilities sharing one type.
+Threshold: LCOM4 > 1. Codebase median: 1.
+Implies: split into separate types, one per group.
+
+  WatchManager (watches)      LCOM4:2  13 methods  CBO:13
+    Group 1: DeriveAppliedSet, EnsureWatch, GetLabels, GetResourceVersion, KindFor, SetOnEvent, SetOnNewType, Shutdown, eventHandlers, forceStop, releaseWatch, stopLocked
+    Group 2: defaultCreateInformer
+  WatchCoordinator (watches)  LCOM4:2  10 methods  CBO:6
+    Group 1: RemoveGraph, RouteEvent, addCollectionLocked, addScalarLocked, doneGraph, gvrsToReleaseLocked, removeCollectionLocked, removeFromIndexesLocked, removeScalarLocked
+    Group 2: ForGraph
+  instanceState (controller)  LCOM4:2  2 methods  CBO:5
+    Group 1: mergeDynamicGVK
+    Group 2: updateAppliedKeys
+  Node (graph)                LCOM4:2  8 methods  CBO:0
+    Group 1: Body, HasBody, HasDynamicGVR, Identity, Payload, SetType, Type
+    Group 2: HasStatusSubresource
