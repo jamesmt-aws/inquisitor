@@ -2,6 +2,8 @@
 
 A run of the simplicity-doc framework against ~232 commits on the krocodile branch of `ellistarn/kro`, all authored by Ellis. The goal is empirical: do the three definitions in the paper (S1 deletion-minimality, S2 partition match, S3 MDL compression) discriminate work the team labels as simplification from work the team adds and keeps, or work the team adds and later regrets.
 
+**Start with [`RESULTS.md`](RESULTS.md)** for the consolidated findings and reading order. The detail files in `findings/` are the appendix.
+
 ## Layout
 
 ```
