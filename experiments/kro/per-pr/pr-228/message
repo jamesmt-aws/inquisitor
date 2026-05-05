@@ -1,0 +1,36 @@
+reconcile: fix forEach prune flake — per-node applied key tracking (#228)
+
+## Summary
+
+- Fix ~10% flake in `TestRGDLifecyclePort` where forEach scale-down
+(N→0) fails to prune the removed child's Deployment
+- Replace append-only `walkState.appliedKeys []string` with `nodeKeys
+map[string][]string` (per-node, last-writer-wins)
+- When a node is processed twice in the same walk (skip at Step 1, then
+dispatch after propagation trigger), the second write overwrites the
+first — stale carry-forward keys no longer cancel prune candidates
+
+## Root Cause
+
+`tryDispatch` runs the skip check (Step 1) before the dependency check.
+When `rgd` is skipped, it dispatches dependents including
+`instanceGraphs`. If `instanceGraphs` is not yet triggered, Step 1 fires
+and `carryForwardKeys` appends the stale L2 Graph key to `appliedKeys`.
+Later, when `instances` completes with a changed hash, `instanceGraphs`
+gets a propagation trigger and dispatches — returning 0 keys (instance
+deleted). But `appliedKeys` already has the stale key from the earlier
+carry-forward. The prune phase sees both, and the stale key prevents
+cleanup.
+
+## Fix
+
+`nodeKeys map[string][]string` — keyed by node ID, last writer wins.
+Both `carryForwardKeys` and dispatch result processing write to
+`nodeKeys[nodeID]`. After the walk, flatten into `appliedKeys` for the
+prune phase. ~10 lines changed, no new abstractions.
+
+## Validation
+
+- `make presubmit` passes (vet, race, e2e, compat)
+- `TestRGDLifecyclePort`: 20/20 passes (was ~9/10)
+- All benchmarks pass with no regression

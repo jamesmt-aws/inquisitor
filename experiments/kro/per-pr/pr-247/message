@@ -1,0 +1,42 @@
+experimental: strip optimization infrastructure and structural debt (#247)
+
+## Summary
+
+Second simplification pass. Remove caches, dead interfaces, and
+duplication that survived the first pass (#245).
+
+**Net: -1,522 lines (521 added, 2,043 removed) across 30 files**
+
+## Removed
+
+- `resourceCache` entirely (apply-hash skip for SSA Patch elision)
+- Content-addressed compiled graph sharing and compilation key
+computation
+- `precompileExpressionChildGraphs` (design says child compiles
+independently)
+- `diffRevisionNodes` and revision-transition selective state
+carry-forward
+- Revision Ready/Active conditions (keep only GC)
+- Dead metrics (`ResyncTimerFiresTotal`, `SelfRefreshTotal`)
+- Dead watch interfaces (`DrainTriggers`, `DepositTrigger`,
+`DrainCollectionChanges`, `CollectionChange`, `GetResourceVersion`,
+`RetainWatches`)
+
+## Simplified
+
+- `graphCaches` flattened to `map[string]*instanceState`
+- `compileRevision` reduced from 6 branches to 2
+- `RouteEvent` simplified to identify-owner-and-enqueue
+- Extracted `deletePreflight()` from duplicated prune/delete logic
+- Decomposed `applySSA` into named steps (`prepareObject`,
+`checkOwnership`, `ssaPatch`, `evictThirdPartyManagers`)
+- Collapsed forEach carry-forward into single `forEachCarryForward`
+struct
+- `reconcileNode` returns `*nodeOutput` instead of `([]string,
+*forEachState, error)` tuple
+
+## Testing
+
+- All E2E tests pass, 0 failures
+- Unit tests pass with `-race`
+- `go vet` clean

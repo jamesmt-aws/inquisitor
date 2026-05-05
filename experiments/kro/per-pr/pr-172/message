@@ -1,0 +1,28 @@
+simplicity: replace stale Own/Contribute terminology with template/patch (#172)
+
+## Summary
+
+- Replace all stale "Own"/"Contribute" terminology with the canonical
+vocabulary established by the designs: `template:` and `patch:`.
+- Complete the `ref` → `nodeType` variable rename in files not covered
+by #170 (`infertype.go`, `delete.go`, log fields).
+- Rename `ownNode()` test helper to `templateNode()`.
+
+## Why
+
+The simplicity checklist requires: "Each concept has exactly one name,
+used consistently across every surface." Comments and test names used
+"Own" and "Contribute" from a previous design iteration. The designs,
+the types (`NodeTypeTemplate`, `NodeTypePatch`), and the keywords all
+say template/patch. The comments said something different.
+
+## Scope
+
+23 files changed, +194/-195. No behavioral changes.
+
+- 7 production files: remaining `ref` → `nodeType` locals, comment
+terminology, log field keys
+- 16 test files: function renames (15 test functions), helper renames,
+comments, log messages
+
+Presubmit green (unit tests, integration tests, compat suite).

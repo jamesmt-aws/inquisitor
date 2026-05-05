@@ -1,0 +1,21 @@
+simplicity: remove dead state, eliminate shadowing, add NodeState sync guard, replace ForEach map with typed binding (#185)
+
+## Summary
+
+Four simplicity fixes from a reconciling-implementations audit against
+the designs:
+
+- **Remove dead field `reconcileState.nodeCount`** — set but never read
+by any status derivation function
+- **Eliminate `hasPerItemGate` shadowing** — same invariant expression
+re-declared inside forEach loop; hoisted to outer scope
+- **Add NodeState/nodeStateLabels sync guard** — `_nodeStateCount`
+sentinel + `init()` assertion panics at startup if a new state is added
+without updating metric labels
+- **Replace `ForEach map[string]string` with `*ForEachBinding` struct**
+— the design says multi-variable cross-product is unsupported; the map
+permitted multiple keys with a runtime guard; the struct encodes the
+single-dimension constraint at the type level. Parser still accepts both
+YAML shapes.
+
+All presubmit (unit + e2e + compat) pass.

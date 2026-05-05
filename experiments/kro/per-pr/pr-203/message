@@ -1,0 +1,42 @@
+owner references: hold instance during Graph teardown via patch node (#203)
+
+## Summary
+
+- Compose two standard K8s primitives for ordered instance teardown:
+`ownerReference` (GC cascade) + `patch:` node (finalizer blocking)
+- Controller detects owner Terminating and self-deletes; teardown prunes
+the patch, releasing the finalizer via SSA field release
+- Zero new API surface — no new spec fields, no new node types. The
+lifecycle coupling is expressed entirely through existing Graph
+primitives
+
+## Design
+
+The RGD stdlib adds an `instanceLifecycle` patch node to per-instance
+Graphs that places `experimental.kro.run/instance-lifecycle` on the
+Instance. The controller's only new behavior is `ownerDeleting()` (~20
+lines): detect owner's `deletionTimestamp` → self-delete. Everything
+else uses existing mechanics:
+
+| Concern | Mechanism |
+|---|---|
+| Cascade (Graph dies when owner dies) | `ownerDeleting()` — detect
+owner Terminating, self-delete |
+| Blocking (Owner waits for teardown) | `patch:` node places finalizer
+on owner |
+| Ordered cleanup | Graph's own finalizer + existing teardown |
+| Release owner | Patch pruned during teardown → SSA releases finalizer
+|
+
+## Teardown ordering fix
+
+Patch field release now runs AFTER template deletion (was before). This
+ensures lifecycle finalizers aren't released while managed resources
+still exist. The ordering is correct in general: clean up your own
+resources, then release claims on others.
+
+## Tests
+
+4 e2e tests validate the composition: finalizer placement via patch,
+full teardown lifecycle, race condition (owner gone before Graph), and
+ordering guarantee.

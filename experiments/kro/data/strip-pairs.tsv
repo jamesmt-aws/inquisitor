@@ -1,0 +1,16 @@
+stripped_sha	added_sha	what	confidence
+d94ded6	cd46848	walkstate location	high
+9014431	58dd9a5	type cache, evaluation caching	strong
+9014431	22681e7	forEach incremental diff	strong
+9014431	d6d6e4e	section-scoped hashing	strong
+9014431	96048c6	custom hashDesiredState	medium
+9014431	f2231a6	drift timers, trigger-scoped walks	strong
+9014431	56b0d7b	worker goroutine dispatch	strong
+9014431	f5c3dc5	perf rewrite	medium
+9e4b2f7	e02896f	content-addressed graph sharing	strong
+9e4b2f7	8ac5620	resync/self-refresh metrics	strong
+9e4b2f7	4f844ef	revision Ready/Active conditions	strong
+9e4b2f7	9313102	watch interfaces	strong
+439a520	58dd9a5	graphcache.go	medium
+439a520	8ac5620	metrics.go	medium
+439a520	96048c6	hash.go	medium

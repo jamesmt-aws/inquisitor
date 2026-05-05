@@ -1,0 +1,63 @@
+experimental: simplify reconciliation to core algorithm (#245)
+
+## Summary
+
+Strip optimization machinery (007-optimizations.md) from the
+reconciliation hot path, leaving only the core algorithm from
+005-reconciliation.md. The designs explicitly separate optimizations as
+future work — this change enforces that boundary in the code.
+
+- Replace the complex coordinator/worker DAG walk with a simple
+sequential loop over topological order
+- Remove 3-layer field-path-scoped hash system, trigger-scoped walks,
+per-node resync timers, worker goroutines, forEach incremental diffing,
+and evaluation caching
+- Preserve correctness: `applySSA`'s content-addressed hash still
+prevents unnecessary API writes
+
+## What changed
+
+| File | Before | After | Reduction |
+|------|--------|-------|-----------|
+| `controller.go` | 830 | 497 | 40% |
+| `walk.go` | 982 | 479 | 51% |
+| `eval.go` | 629 | 393 | 38% |
+| `instance.go` | 200 | 107 | 47% |
+| `hash.go` | 361 | 136 | 62% |
+| `foreach.go` | 614 | 456 | 26% |
+| `node.go` | 518 | 378 | 27% |
+| **Total** | **4134** | **2446** | **41%** |
+
+Net: **-2443 lines** across 18 files.
+
+## Removed optimization machinery
+
+- **3-layer hash system** (`hashNodeInputs`, `hashSelfPaths`, field-path
+hashing) — evaluation skip detection
+- **Trigger-scoped walks** — partial DAG walks based on watch event
+routing
+- **Per-node resync timers** — exponential backoff, jittered resync
+- **Worker goroutine dispatch** — channel-based coordinator with Path
+1/2/3 logic
+- **ForEach incremental item diffing** — per-item content hash caching,
+changed-item sets
+- **Watch incremental cache** — `mergeCollectionChanges`, collection
+dirty tracking
+- **Evaluation caching** — `previousEvalHashes`, `previousSelfHashes`,
+`snapshotFor`
+
+## What replaced it
+
+Simple sequential DAG walk: for each node in topological order, check
+dependencies → includeWhen → propagateWhen → evaluate → publish to
+scope. No goroutines, no channels, no hash checks. Every node is
+evaluated every reconcile (correct by construction).
+
+## Testing
+
+- **155 E2E tests pass, 0 failures, no flakes**
+- Unit tests pass with `-race`
+- `go vet` clean
+- One test (`TestPropagationStopsOnIrrelevantChange`) relaxed from
+testing the optimization invariant (evaluation was skipped) to testing
+the correctness invariant (no API writes)

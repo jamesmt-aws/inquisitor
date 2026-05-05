@@ -1,0 +1,47 @@
+experimental: add structural OpenAPI schema to Graph and GraphRevision CRDs (#248)
+
+## Summary
+
+- Replace the schemaless `x-kubernetes-preserve-unknown-fields` at the
+CRD root with a typed structural OpenAPI schema for both Graph and
+GraphRevision CRDs
+- Node items require `id` (with regex pattern), type body keywords as
+named properties with preserve-unknown-fields for mixed string/map
+values, type condition expressions as string arrays, and fully type the
+status subresource
+- Errors like missing id, invalid id characters, and non-string
+readyWhen/includeWhen elements are now caught at API server admission
+instead of controller reconcile time
+- Update 4 e2e tests that deliberately created invalid Graphs to expect
+admission rejection instead of controller-level DeclarationError
+
+## What changed
+
+**Graph CRD** (36 → 195 lines) and **GraphRevision CRD** (39 → 181
+lines):
+
+| Field | Before | After |
+|---|---|---|
+| `spec.nodes` | untyped | `required`, array with `maxItems: 128` |
+| `node.id` | untyped | `required`, string with pattern
+`^[a-zA-Z_][a-zA-Z0-9_]*$` |
+| `node.{template,patch,ref,watch,def,forEach}` | invisible | named
+properties with `x-kubernetes-preserve-unknown-fields` |
+| `node.{includeWhen,readyWhen,propagateWhen}` | untyped | `array of
+string`, `maxItems: 32` |
+| `node.lifecycle.apply` | untyped | string with `enum: [Force]` |
+| `status.conditions` | untyped | `x-kubernetes-list-type: map` keyed by
+`type`, all 5 fields typed |
+| `status.topologicalOrder` | untyped | typed `nodes` array +
+preserve-unknown-fields for forEach keys |
+
+All fields have descriptions for `kubectl explain`.
+
+## What the CRD can't validate (parser still handles)
+
+- Mutual exclusivity of body keywords (CRD CEL can't reference
+`x-kubernetes-preserve-unknown-fields` properties)
+- Unique node IDs (O(n²) CEL rule exceeds cost budget with unknown-field
+items)
+- Per-keyword shape rules (template requires apiVersion+kind, patch
+requires metadata.name, etc.)

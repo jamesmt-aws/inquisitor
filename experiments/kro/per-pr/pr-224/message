@@ -1,0 +1,31 @@
+reconcile: fix ReadinessDependents propagation, cluster-scoped ref routing, stale dispatch (#224)
+
+## Summary
+
+Fix 4 bugs causing compat test failures (35/39 → 39/39):
+
+1. **ReadinessDependents propagation gap** (`controller.go`):
+`propagationTriggered` was only set for hard `Dependents`, never
+`ReadinessDependents`. Nodes consuming only `.ready()` (e.g.,
+`rgdInstanceStatus`) were never re-triggered when upstream readiness
+changed. Fixed in Path 2 propagation hash, coordinator loop propagation
+hash, and coordinator loop dispatch — symmetric with Dependents in all
+three locations.
+
+2. **Cluster-scoped ref namespace mismatch** (`node.go`): `reconcileRef`
+unconditionally defaulted empty namespace to the graph's namespace. For
+cluster-scoped resources (CRDs), the WatchScalar registered with
+`namespace=graph-ns` while informer events arrive with `namespace=""` —
+permanent routing mismatch. Added scope check matching `applySSA`
+pattern.
+
+3. **Stale readiness dispatch** (`controller.go`): When a node with only
+ReadinessDeps dispatched concurrently with its readiness deps, the
+worker snapshot captured stale `.ready()` values. The node committed
+first; the propagation hash at walk-end reflected final state, erasing
+evidence of the stale dispatch. Fixed by detecting inflight readiness
+deps at dispatch time and depositing explicit triggers for the next
+reconcile.
+
+4. **DepositTrigger API** (`watches.go`): New method on `GraphWatcher`
+to schedule re-evaluation of stale nodes on the next reconcile cycle.

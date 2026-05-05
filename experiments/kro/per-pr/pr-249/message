@@ -1,0 +1,81 @@
+experimental: simplify controller architecture — extract interfaces, unify code paths, remove dead code (#249)
+
+## Summary
+
+Radical re-simplification of the experimental controller package. **38
+files changed, 909 insertions, 2,241 deletions (net -1,332 lines).**
+
+### Structural changes
+
+- **Extract `clusterAccess` struct** — separates execution layer (16
+methods: API server ops, node handlers, prune, finalization) from
+orchestration layer (10 methods: reconcile loop, revision lifecycle,
+compilation, status). The `GraphReconciler` receiver is now reserved for
+methods that genuinely need 4+ infrastructure fields. Every other method
+declares exactly what cluster access it needs.
+
+- **Extract `reconcileScope` struct** — bundles `(graph, watcher, name,
+namespace)` that threaded unchanged through 17 functions at 5 call
+levels. Reduces parameter counts by 1–2 across the entire call chain and
+eliminates repeated `graph.GetName()`/`graph.GetNamespace()` calls.
+
+- **Unify teardown + prune** — design 005 says teardown IS pruning where
+all nodes are candidates. The two ~400-line implementations with
+divergent finalization handling are now one `pruneResources` code path.
+`delete.go` shrunk from 465 → 296 lines.
+
+### Code removal
+
+- **Optimization layer stripped** per design 007 ("do not implement"):
+compilation cache (`graphcache.go`), apply-hash annotations (`hash.go`),
+Prometheus metrics (`metrics.go`)
+- **Compiler deduplicated**: CEL env registration ×4 → 1 helper;
+ready/updated functions merged via parameterized factory
+- **Graph simplified**: `CompilationKey`/`CompilationKeyWithHints`
+removed; `fieldpath.go` merged into `expr.go`
+- **Dead code removed**: `FinalizationComplete` constant,
+`narrowObjectType`, `deferredExpr.source` field, `forEachState`
+duplicate type
+
+### Organizational cleanup
+
+- `scope.go` → merged into `resourcekey.go` (scope resolution is a
+resource identity concern)
+- `deletion.go` → merged into `prune.go` (preflight checks are prune
+infrastructure)
+- `gvkToGVR` → moved to `resourcekey.go` (utility, not controller
+lifecycle)
+- `IsGraphCRLiteral` → moved to `graph` package (domain predicate, not
+compiler concern)
+- `forEachState` / `forEachCarryForward` → unified into single type
+- `nodeResult` forEach fields collapsed from 3 maps to 1 struct pointer
+- `nodeType` parameter removed from call chain (redundant with
+`node.Type()`)
+- `updateRevisionStatus` → renamed `gcSupersededRevisions` (matches
+actual behavior)
+- `evalConditions` unifies readyWhen/propagateWhen/includeWhen
+evaluation
+- `defaultNamespace` replaces 3 scattered namespace-defaulting copies
+- `ssaWrite` unifies SSA patch+status subresource pattern
+
+### Final structure
+
+```
+graph/          1,735 lines  6 files  — data model, parsing, expressions, labels (leaf)
+dag/              741 lines  2 files  — topology + walk state
+compiler/       2,647 lines  7 files  — pure compilation
+watches/          843 lines  3 files  — informer lifecycle + event routing
+controller/     5,281 lines 16 files  — reconcile loop + execution
+  GraphReconciler  — 10 methods (orchestration)
+  clusterAccess    — 15 methods (execution)
+  reconcileScope   — per-reconcile identity context
+```
+
+### Validation
+
+- `go build ./...` — pass
+- `go vet ./...` — pass  
+- `go test -race -count=1 ./controller/...` — all packages pass
+- All 5 design invariants verified (teardown delegates to prune, never
+unordered deletion, identity labels stamped, optimizations removed,
+revisions immutable)

@@ -1,0 +1,30 @@
+Move walk state from dag/ to controller/ (#261)
+
+## What
+
+`dag/walkstate.go` defined `NodeState`, `PlanState`, `PlanSummary` —
+reconcile-time outputs living in a compile-time package. `errors.go`,
+`status.go`, and `foreach.go` imported `dag/` solely for these types.
+
+## Changes
+
+Move `walkstate.go` from `dag/` to `controller/`. Update all references.
+
+## Result
+
+`dag/` is now purely compile-time: one file (`dag.go`), three exported
+types (`DAG`, `Topology`), three exported functions (`BuildDAG`,
+`AssembleDAG`, `DetectCyclesEarly`). Zero reconcile-time concepts.
+
+**Import cleanup:** `errors.go`, `status.go`, `foreach.go` no longer
+import `dag/` at all. The remaining imports are for the actual DAG
+struct.
+
+The architecture is now legible from the import graph: `dag/` =
+compile-time, `controller/` = reconcile-time.
+
+## Verification
+
+- `go build ./...` clean
+- `go test -race ./controller/...` passes
+- No behavioral changes — code move only

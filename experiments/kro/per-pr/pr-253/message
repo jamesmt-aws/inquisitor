@@ -1,0 +1,57 @@
+experimental: radical simplification — remove dead code, eliminate duplication, collapse abstractions (#253)
+
+39 files changed, ~1000 net lines removed.
+
+## Dead code removed
+- 5 dead `CompiledGraph` fields (`ExprPaths`, `ExprAccessModes`,
+`DynamicGVKNodes`, `ChildTopologies`, `TypeCacheGen`) — written but
+never read in production
+- `graph/hash.go` — dead content-hash infrastructure for unimplemented
+optimization
+- `Topology.nodeSelfPaths/nodeDepPaths`, `Node.SelfPaths/DepPaths`,
+`ForEachBinding.CollectionSource` — pre-staged optimization with real
+allocation cost per reconcile
+- `walkResult.scope/nodeReady/forEach` — written, never read by callers
+- `resyncCorrection bool` — dead parameter threaded through 5 function
+signatures
+- `forEachCarryForward.items` — write-only phantom state
+- `reconcileState.topologicalOrder` — dead field with dead guard
+- `instanceState.spec` — set but never read
+- `PlanState.SetState` vestigial `dag` parameter
+- `FinalizeSkippedStates`, `NodeStateCount` — exported with zero
+production callers
+- `gateDispatch` constant — defined, never tested in production
+- `pruneOrder` — production-dead, replaced by `pruneOrderApplied`
+
+## Duplication eliminated
+- `main_test.go` migrated to `testenv.Environment` (-320 lines)
+- `graphReady*` extractors collapsed via generic `conditionField`
+- `pruneOrder`/`pruneOrderApplied` unified via `buildKeyPositionMap`
+- `fieldpath.go` shared `walkAST` + `astVisitor` deduplicates 2 parallel
+AST walkers
+- `runFinalization`/`runForEachFinalization` share
+`ensureFinalizerResource`
+- `AllExpressions`/`ExtractReferencedPathsFromNode` share
+`WalkExpressions` helper
+- Misc inlines: `createRevision`, `isAPIServerManager`,
+`collectAllDAGs`, `reverse`, CRD test builders, duplicate `stubResolver`
+types
+
+## Abstractions removed
+- `GVKScopeResolver` single-impl interface → concrete `*scopeResolver`
+- `WatchCoordinator.Watches` public field → unexported with delegation
+- `SetOnEvent`/`SetOnNewType` setters → constructor parameters
+- 11 symbols unexported (condition types, finalization phase, watch
+events, `CompiledGraph` internals)
+- `forceApply: "true"` string form removed (undocumented, not in any
+design)
+- `pruneReleased` outcome removed (patches skip verification via type
+check, not outcome)
+
+## Stale comments and naming
+- 9 stale/misleading comments fixed
+- `resource.gvr` renamed to `resource.obj`
+- `LabelValue()` delegates to `String()`
+- `conditionsSchemaProperties` → `conditionsSchema` (removed wrapper
+map)
+- `celReadyFunction`/`celUpdatedFunction` wrappers inlined

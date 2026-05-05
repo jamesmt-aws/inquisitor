@@ -1,0 +1,3 @@
+experimental/chart-crds/templates/graphrevisions.yaml
+experimental/chart-crds/templates/graphs.yaml
+experimental/test/e2e/correctness_test.go
